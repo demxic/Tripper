@@ -87,3 +87,39 @@ class Equipment(object):
 
     def __repr__(self):
         return "<{__class__.__name__}> {airplane_code}".format(__class__=self.__class__, **self.__dict__)
+
+
+class Route(object):
+    """For a given airline, represents a flight number or ground duty name
+        with its origin and destination airports
+        Note: flights and ground duties are called Events"""
+    _routes = dict()
+
+    def __new__(cls, name: str, origin: Airport, destination: Airport, route_id: int):
+        route_key = name + origin.iata_code + destination.iata_code
+        route = cls._routes.get(route_key)
+        if not route:
+            route = super().__new__(cls)
+            if route_id:
+                cls._routes[route_key] = route
+        return route
+
+    def __init__(self, name: str, origin: Airport, destination: Airport, route_id: int = None):
+        """Flight numbers have 4 digits only"""
+        if not hasattr(self, 'initted'):
+            self.route_id = route_id
+            self.name = name
+            self.origin = origin
+            self.destination = destination
+            self.initted = True
+
+    def __eq__(self, other):
+        """Two routes are the same if their parameters are equal"""
+        return all((self.name == other.name, self.origin == other.origin, self.destination == other.destination))
+
+    def __str__(self):
+        return "{name} {origin} {destination}".format(**self.__dict__)
+
+    def __repr__(self):
+        return "<{__class__.__name__}> {name} {origin} {destination}".format(
+            __class__=self.__class__, **self.__dict__)
