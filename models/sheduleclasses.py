@@ -60,3 +60,30 @@ class Airport(object):
 
     def __repr__(self):
         return "<{__class__.__name__}> {iata_code}".format(__class__=self.__class__, **self.__dict__)
+
+
+class Equipment(object):
+    _equipments = dict()
+
+    def __new__(cls, airplane_code, cabin_members):
+        """Use the flyweight pattern to create only one object """
+        equipment = cls._equipments.get(airplane_code)
+        if not equipment:
+            equipment = super().__new__(cls)
+            cls._equipments[airplane_code] = equipment
+        return equipment
+
+    def __init__(self, airplane_code: str, cabin_members: int = 0):
+        if not hasattr(self, 'initted'):
+            self.airplane_code = airplane_code
+            self.cabin_members = cabin_members
+            self.initted = True
+
+    def __str__(self):
+        return self.airplane_code if self.airplane_code else 3 * ' '
+
+    def __eq__(self, other) -> bool:
+        return self.airplane_code == other.airplane_code
+
+    def __repr__(self):
+        return "<{__class__.__name__}> {airplane_code}".format(__class__=self.__class__, **self.__dict__)
