@@ -2,7 +2,11 @@
   <dictionary name="demxi">
     <words>
       <w>aeroméxico</w>
+      <w>iata</w>
       <w>initted</w>
+      <w>viaticum</w>
+      <w>weakref</w>
+      <w>xico</w>
     </words>
   </dictionary>
 </component>
