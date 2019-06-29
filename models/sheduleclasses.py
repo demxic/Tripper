@@ -4,6 +4,8 @@ All classes needed to implement a crew scheduling app
 
 """
 import pytz
+from data.database import CursorFromConnectionPool
+from models.exceptions import UnsavedAirport
 
 
 class Airline(object):
@@ -37,29 +39,43 @@ class Airport(object):
     """
     _airports = dict()
 
-    def __new__(cls, iata_code: str = None, timezone=None, viaticum=None):
-        airport = cls._airports.get(iata_code)
+    def __new__(cls, airport_iata_code: str = None, timezone=None, viaticum=None):
+        airport = cls._airports.get(airport_iata_code)
         if not airport:
             airport = super().__new__(cls)
             if timezone:
-                cls._airports[iata_code] = airport
+                cls._airports[airport_iata_code] = airport
         return airport
 
-    def __init__(self, iata_code: str, timezone: pytz.timezone = None, viaticum: str = None):
+    def __init__(self, airport_iata_code: str, timezone: pytz.timezone = None, viaticum: str = None):
         """
         Represents an airport as a 3 letter code
         """
         if not hasattr(self, 'initted'):
-            self.iata_code = iata_code
+            self.airport_iata_code = airport_iata_code
             self.timezone = timezone
             self.viaticum = viaticum
             self.initted = True
 
+    @classmethod
+    def load_from_db(cls, airport_iata_code: str):
+        airport = cls._airports.get(airport_iata_code.upper())
+        if not airport:
+            with CursorFromConnectionPool() as cursor:
+                cursor.execute('SELECT * FROM airports WHERE iata_code=%s;', (airport_iata_code,))
+                airport_data = cursor.fetchone()
+            if airport_data:
+                timezone = pytz.timezone(airport_data[1] + '/' + airport_data[2])
+                airport = cls(airport_iata_code=airport_data[0], timezone=timezone, viaticum=airport_data[3])
+            else:
+                raise UnsavedAirport(airport_iata_code=airport_iata_code)
+        return airport
+
     def __str__(self):
-        return "{}".format(self.iata_code)
+        return "{}".format(self.airport_iata_code)
 
     def __repr__(self):
-        return "<{__class__.__name__}> {iata_code}".format(__class__=self.__class__, **self.__dict__)
+        return "<{__class__.__name__}> {airport_iata_code}".format(__class__=self.__class__, **self.__dict__)
 
 
 class Equipment(object):
