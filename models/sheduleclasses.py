@@ -71,6 +71,16 @@ class Airport(object):
                 raise UnsavedAirport(airport_iata_code=airport_iata_code)
         return airport
 
+    def save_to_db(self):
+        continent, tz_city = self.timezone.zone.split('/')
+        with CursorFromConnectionPool() as cursor:
+            cursor.execute('INSERT INTO public.airports(iata_code, continent, tz_city, viaticum_zone) '
+                           'VALUES (%s, %s, %s, %s) '
+                           'RETURNING iata_code; ',
+                           (self.airport_iata_code, continent, tz_city, self.viaticum))
+            iata_code = cursor.fetchone()[0]
+        return iata_code
+
     def __str__(self):
         return "{}".format(self.airport_iata_code)
 
@@ -112,7 +122,7 @@ class Route(object):
     _routes = dict()
 
     def __new__(cls, name: str, origin: Airport, destination: Airport, route_id: int):
-        route_key = name + origin.iata_code + destination.iata_code
+        route_key = name + origin.airport_iata_code + destination.airport_iata_code
         route = cls._routes.get(route_key)
         if not route:
             route = super().__new__(cls)
