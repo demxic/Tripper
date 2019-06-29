@@ -130,15 +130,13 @@ class Route(object):
 
     def __init__(self, event_name: str, origin: Airport, destination: Airport):
         """Flight numbers have 4 digits only"""
-        if not hasattr(self, 'initted'):
-            self.event_name = event_name
-            self.origin = origin
-            self.destination = destination
-            self.initted = True
-            self._stored = False
+        self.event_name = event_name
+        self.origin = origin
+        self.destination = destination
+        self._retrieved = False
 
     def is_stored(self):
-        if not self._stored:
+        if not self._retrieved:
             with CursorFromConnectionPool() as cursor:
                 cursor.execute('SELECT * FROM public.routes '
                                '    WHERE event_name=%s '
@@ -147,8 +145,8 @@ class Route(object):
                                (self.event_name, self.origin.airport_iata_code, self.destination.airport_iata_code))
                 route = cursor.fetchone()
                 if route:
-                    self.stored = True
-        return self._stored
+                    self._retrieved = True
+        return self._retrieved
 
     def __eq__(self, other):
         """Two routes are the same if their parameters are equal"""
@@ -159,5 +157,5 @@ class Route(object):
         return "{event_name} {origin} {destination}".format(**self.__dict__)
 
     def __repr__(self):
-        return "<{__class__.__name__}> {name} {origin} {destination}".format(
+        return "<{__class__.__name__}> {event_name} {origin} {destination}".format(
             __class__=self.__class__, **self.__dict__)
