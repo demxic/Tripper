@@ -121,8 +121,8 @@ class Route(object):
         Note: flights and ground duties are called Events"""
     _routes = dict()
 
-    def __new__(cls, route_name: str, origin: Airport, destination: Airport):
-        route_key = route_name + origin.airport_iata_code + destination.airport_iata_code
+    def __new__(cls, event_name: str, origin: Airport, destination: Airport):
+        route_key = event_name + origin.airport_iata_code + destination.airport_iata_code
         route = cls._routes.get(route_key)
         if not route:
             route = super().__new__(cls)
@@ -146,6 +146,17 @@ class Route(object):
                 route = cursor.fetchone()
                 if route:
                     self._retrieved = True
+        return self._retrieved
+
+    def save_to_db(self):
+        with CursorFromConnectionPool() as cursor:
+            cursor.execute('INSERT INTO public.routes(event_name, origin, destination) '
+                           'VALUES (%s, %s, %s) '
+                           'RETURNING *; ',
+                           (self.event_name, self.origin.airport_iata_code, self.destination.airport_iata_code))
+            route = cursor.fetchone()
+            if route:
+                self._retrieved = True
         return self._retrieved
 
     def __eq__(self, other):

@@ -1,7 +1,6 @@
 from data.database import Database
 from models.fileparsers import number_of_trips_in_pbs_file, create_trips_as_dict
 from models.objectbuilders import ScheduleObjectBuilder
-from models.sheduleclasses import Route
 
 data_folder = "C:/Users/demxi/Google Drive/Sobrecargo/PBS/2019 PBS/201905 PBS/"
 file_name = "201905 - PBS vuelos EJE.txt"
@@ -19,7 +18,7 @@ builder = ScheduleObjectBuilder(crew_position=crew_position, trip_base=trip_base
 mex = builder.build_airport('MEX')
 mad = builder.build_airport('MAD')
 scl = builder.build_airport('SCL')
-r1 = Route('0001', mex, mad)
+r1 = builder.build_route('0001', mex, mad)
 print("{} is stored in DB: {}".format(r1, r1.is_stored()))
-r2 = Route('0015', mex, scl)
+r2 = builder.build_route('0015', mex, scl)
 print("{} is stored in DB: {}".format(r2, r2.is_stored()))
