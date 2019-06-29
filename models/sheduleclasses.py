@@ -121,30 +121,42 @@ class Route(object):
         Note: flights and ground duties are called Events"""
     _routes = dict()
 
-    def __new__(cls, name: str, origin: Airport, destination: Airport, route_id: int):
-        route_key = name + origin.airport_iata_code + destination.airport_iata_code
+    def __new__(cls, route_name: str, origin: Airport, destination: Airport):
+        route_key = route_name + origin.airport_iata_code + destination.airport_iata_code
         route = cls._routes.get(route_key)
         if not route:
             route = super().__new__(cls)
-            if route_id:
-                cls._routes[route_key] = route
         return route
 
-    def __init__(self, name: str, origin: Airport, destination: Airport, route_id: int = None):
+    def __init__(self, event_name: str, origin: Airport, destination: Airport):
         """Flight numbers have 4 digits only"""
         if not hasattr(self, 'initted'):
-            self.route_id = route_id
-            self.name = name
+            self.event_name = event_name
             self.origin = origin
             self.destination = destination
             self.initted = True
+            self._stored = False
+
+    def is_stored(self):
+        if not self._stored:
+            with CursorFromConnectionPool() as cursor:
+                cursor.execute('SELECT * FROM public.routes '
+                               '    WHERE event_name=%s '
+                               '      AND origin=%s '
+                               '      AND destination=%s;',
+                               (self.event_name, self.origin.airport_iata_code, self.destination.airport_iata_code))
+                route = cursor.fetchone()
+                if route:
+                    self.stored = True
+        return self._stored
 
     def __eq__(self, other):
         """Two routes are the same if their parameters are equal"""
-        return all((self.name == other.name, self.origin == other.origin, self.destination == other.destination))
+        return all((self.event_name == other.event_name, self.origin == other.origin,
+                    self.destination == other.destination))
 
     def __str__(self):
-        return "{name} {origin} {destination}".format(**self.__dict__)
+        return "{event_name} {origin} {destination}".format(**self.__dict__)
 
     def __repr__(self):
         return "<{__class__.__name__}> {name} {origin} {destination}".format(
