@@ -1,4 +1,4 @@
-"""This module stores the class need to turn pbs-dictionaries into scheduleclasses objects. """
+"""This module stores the classes need to turn pbs-dictionaries into schedule objects. """
 import pytz
 
 from models.exceptions import UnsavedAirport, UnsavedRoute
@@ -38,14 +38,18 @@ class ScheduleObjectBuilder(object):
                 raise e
         return stored_airport
 
-    @staticmethod
-    def build_route(event_name: str, origin: Airport, destination: Airport) -> Route:
-        route = Route(event_name=event_name, origin=origin, destination=destination)
-        if not route.is_stored():
-            print("Route {} not stored in the Database ".format(route))
+    def build_route(self, event_name: str, origin: Airport, destination: Airport) -> Route:
+        # route = Route(event_name=event_name, origin=origin, destination=destination)
+        # if not route.route_id:
+        route = None
+        try:
+            route = Route.load_from_db(event_name=event_name, origin=origin, destination=destination)
+        except UnsavedRoute as e:
+            print(e)
             ans = input("Want to save it Y/N? ").capitalize()
             if ans == 'Y':
-                route.save_to_db()
+                e.route.save_to_db()
+                route = e.route
             else:
-                raise UnsavedRoute(route=route)
+                raise e
         return route

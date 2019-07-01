@@ -5,7 +5,7 @@ All classes needed to implement a crew scheduling app
 """
 import pytz
 from data.database import CursorFromConnectionPool
-from models.exceptions import UnsavedAirport
+from models.exceptions import UnsavedAirport, UnsavedRoute
 
 
 class Airline(object):
@@ -121,43 +121,52 @@ class Route(object):
         Note: flights and ground duties are called Events"""
     _routes = dict()
 
-    def __new__(cls, event_name: str, origin: Airport, destination: Airport):
+    def __new__(cls, event_name: str, origin: Airport, destination: Airport, route_id: int = None):
         route_key = event_name + origin.airport_iata_code + destination.airport_iata_code
         route = cls._routes.get(route_key)
         if not route:
             route = super().__new__(cls)
+            if route_id:
+                cls._routes[route_key] = route
         return route
 
-    def __init__(self, event_name: str, origin: Airport, destination: Airport):
+    def __init__(self, event_name: str, origin: Airport, destination: Airport, route_id: int = None):
         """Flight numbers have 4 digits only"""
-        self.event_name = event_name
-        self.origin = origin
-        self.destination = destination
-        self._retrieved = False
+        if not hasattr(self, 'initted'):
+            self.route_id = route_id
+            self.event_name = event_name
+            self.origin = origin
+            self.destination = destination
+            self.initted = True
 
-    def is_stored(self):
-        if not self._retrieved:
+    @classmethod
+    def load_from_db(cls, event_name: str, origin: Airport, destination: Airport) -> 'Route':
+        route_key = event_name + origin.airport_iata_code + destination.airport_iata_code
+        loaded_route = cls._routes.get(route_key)
+        if not loaded_route or not loaded_route.route_id:
             with CursorFromConnectionPool() as cursor:
-                cursor.execute('SELECT * FROM public.routes '
-                               '    WHERE event_name=%s '
-                               '      AND origin=%s '
-                               '      AND destination=%s;',
-                               (self.event_name, self.origin.airport_iata_code, self.destination.airport_iata_code))
-                route = cursor.fetchone()
-                if route:
-                    self._retrieved = True
-        return self._retrieved
+                cursor.execute('SELECT route_id FROM public.routes '
+                               '    WHERE event_name=%s'
+                               '      AND origin=%s'
+                               '      AND destination=%s',
+                               (event_name, origin.airport_iata_code, destination.airport_iata_code))
+                route_id = cursor.fetchone()
+            if route_id:
+                loaded_route = cls(event_name=event_name, origin=origin, destination=destination,
+                                   route_id=route_id[0])
+            else:
+                raise UnsavedRoute(route=cls(event_name=event_name, origin=origin, destination=destination))
+        return loaded_route
 
     def save_to_db(self):
         with CursorFromConnectionPool() as cursor:
             cursor.execute('INSERT INTO public.routes(event_name, origin, destination) '
                            'VALUES (%s, %s, %s) '
-                           'RETURNING *; ',
+                           'RETURNING route_id; ',
                            (self.event_name, self.origin.airport_iata_code, self.destination.airport_iata_code))
-            route = cursor.fetchone()
-            if route:
-                self._retrieved = True
-        return self._retrieved
+            route_id = cursor.fetchone()[0]
+            self.route_id = route_id
+        return route_id
 
     def __eq__(self, other):
         """Two routes are the same if their parameters are equal"""
